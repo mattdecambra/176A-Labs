@@ -1,0 +1,105 @@
+---
+title: "Geography 176A"
+author: "Matt DeCambra [https://mattdecambra.github.io/mattdecambra/]"
+subtitle: 'Lab 03: COVID-19 Pandemic'
+output:
+  html_document:
+    theme: journal
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+library(tidyverse)
+library(knitr)
+library(readxl)
+library(zoo)
+installed.packages("readxl")
+
+covid = read_csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv')
+```
+
+
+#Question 1
+```{r}
+
+
+question = covid %>%
+filter( state == "California") %>% 
+  arrange(county) %>%
+  mutate(newCases = cases- lag(cases)) %>%
+  filter(date == max(date))
+
+
+(real_new_cases = question %>%
+  slice_max(newCases, n = 5) %>%
+  select(county, newCases))
+
+knitr::kable(real_new_cases, 
+             caption = "Highest Case Count",
+             col.names = c("County", "New Cases"),
+             format.args = list(big.mark = ",")) 
+
+totalCases = covid%>%
+  filter(state == "California")%>%
+  arrange(county)%>%
+  filter(date == max(date))
+
+(casesTable = totalCases %>%
+    slice_max(cases, n = 5) %>%
+    select(county, cases))
+knitr::kable(casesTable,
+             caption = "Total Cases",
+             col.names = c("County", "Total Cases"),
+             format.args = list(big.mark = ","))
+
+library(readxl)
+pop <- read_excel("../data/PopulationEstimates.xls", 
+    skip = 2)
+p2 = pop%>%
+  select(fips = FIPStxt, state = State, Area_Name, pop2019 = POP_ESTIMATE_2019) %>%
+  arrange(state) %>%
+  filter(state == "CA")
+
+calcovid = p2 %>%
+  left_join(question, p2, by = "fips") %>%
+  mutate(cumcases = cases/pop2019) %>%
+mutate(Newcumcases = newCases/pop2019 )
+
+(real_cal_covid = calcovid %>%
+    slice_max(cumcases, n = 5) %>%
+    select(county, cumcases))
+
+
+knitr::kable(real_cal_covid, 
+             caption = "Cases Per Capita Count",
+             col.names = c("County", "Cases per Capita"),
+             format.args = list(big.mark = ",")) 
+```
+
+#Question 2
+```{r}
+covid %>%
+  filter(state %in% c("California", "New York", "Louisiana", "Florida")) %>%
+  group_by(state, date) %>%
+  summarise(cases = sum(cases, na.rm = TRUE)) %>% 
+  group_by(state) %>% 
+  mutate(newcaliCases = cases- lag(cases),
+         roll7 = zoo::rollmean(newcaliCases, 7, fill = NA, align = "right")) %>%
+   ggplot(aes(x = date, y = newcaliCases)) +
+    geom_line(aes(color = state)) +
+  facet_wrap(~state, scale = "free_y")
+
+covid %>%
+  filter(state %in% c("California", "New York", "Louisiana", "Florida")) %>%
+  group_by(state, date) %>%
+  summarise(cases = sum(cases, na.rm = TRUE)) %>% 
+  group_by(state) %>% 
+  mutate(newcaliCases = cases- lag(cases),
+         roll7 = zoo::rollmean(newcaliCases, 7, fill = NA, align = "right")) %>%
+   ggplot(aes(x = date, y = roll7)) +
+    geom_line(aes(color = state)) +
+    facet_wrap(~state, scale = "free_y")
+
+```
+#Question
