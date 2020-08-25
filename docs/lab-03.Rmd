@@ -1,0 +1,250 @@
+---
+title: "Geography 176A"
+author: "[Matt DeCambra](https://mattdecambra.github.io)"
+subtitle: 'Lab 03: Distances and the Border Zone'
+output:
+  html_document:
+    theme: journal
+---
+
+```{r}
+library(tidyverse)
+library(sf)
+library(units)
+
+library(USAboundaries)
+library(rnaturalearth)
+library(gghighlight)
+
+library(ggrepel)
+library(knitr)
+```
+```{r}
+eqdc = '+proj=eqdc +lat_0=40 +lon_0=-96 +lat_1=20 +lat_2=60 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs'
+CONUS= USAboundaries::us_states(resolution = "low") %>%
+  filter( name != "Hawaii") %>%
+  filter( name != "Alaska")
+
+
+
+CONUS <- st_transform(CONUS, "+proj=eqdc +lat_0=40 +lon_0=-96 +lat_1=20 +lat_2=60 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs")
+st_crs(CONUS)
+
+
+library(readr)
+
+cities = readr:: read_csv("../data/uscities.csv") %>% 
+  st_as_sf(coords = c("lng", "lat"), crs = 4326) %>% 
+  filter(!(state_name %in% c( 'Puerto Rico', 'Alaska', 'Hawaii')))
+
+cities <- st_transform(cities, "+proj=eqdc +lat_0=40 +lon_0=-96 +lat_1=20 +lat_2=60 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs")
+st_crs(cities)
+
+  
+
+```
+
+```{r}
+#2
+
+ conus_c = USAboundaries::us_states() %>% 
+   filter(!(name %in% c( 'Puerto Rico', 'Alaska', 'Hawaii'))) %>% 
+   st_combine %>%
+  st_cast("MULTILINESTRING")
+
+conus_c = st_transform(conus_c, "+proj=eqdc +lat_0=40 +lon_0=-96 +lat_1=20 +lat_2=60 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs")
+cities =  st_transform(cities, "+proj=eqdc +lat_0=40 +lon_0=-96 +lat_1=20 +lat_2=60 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs")
+#2.2
+x = cities %>% 
+ filter(!(state_name %in% c( 'Puerto Rico', 'Alaska', 'Hawaii')))
+
+
+x = x %>%
+  mutate(distances = st_distance(x, conus_c),
+         distances = units::set_units(distances, "km"),
+         distances = units::drop_units(distances))
+
+
+
+ggplot() +
+  geom_sf(data = conus_c) +
+  geom_sf(data = x, aes(col = distances), size = .1) +
+  scale_color_gradient(low = "gray", high = "red")
+
+(distTable = x %>%
+    slice_max(distances, n = 5) %>%
+    select(city, state_name, distances))
+knitr::kable(distTable,
+             caption = "Five Farthest Cities from State Border ",
+             col.names = c("City", "State", "Distances(km)", "Geometry"))
+#2.1         
+
+conus_state = USAboundaries::us_states() %>% 
+   filter(!(name %in% c( 'Puerto Rico', 'Alaska', 'Hawaii'))) %>% 
+   st_union %>%
+  st_cast("MULTILINESTRING")
+
+conus_state = st_transform(conus_state, "+proj=eqdc +lat_0=40 +lon_0=-96 +lat_1=20 +lat_2=60 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs")
+
+y = cities %>% 
+ filter(!(state_name %in% c( 'Puerto Rico', 'Alaska', 'Hawaii')))
+
+y = y %>%
+  mutate(state_dist = st_distance(y, conus_state),
+         state_dist = units::set_units(state_dist, "km"),
+         state_dist = units::drop_units(state_dist))
+
+
+ggplot() +
+  geom_sf(data = conus_state) +
+  geom_sf(data = y, aes(col = state_dist), size = .1) +
+  scale_color_gradient(low = "gray", high = "red")
+
+(YdistTable = y %>%
+    slice_max(state_dist, n = 5) %>%
+    select(city, state_name, state_dist))
+knitr::kable(YdistTable,
+             caption = "Five Farthest Cities from US Border ",
+             col.names = c("City", "State", "Distances(km)", "Geometry"))
+#2.3
+
+mex = rnaturalearth::countries110 %>%
+  st_as_sf() %>% 
+  filter(admin == "Mexico") %>% 
+  st_cast("MULTILINESTRING")
+
+plot(mex$geometry)
+
+mex = st_transform(mex, "+proj=eqdc +lat_0=40 +lon_0=-96 +lat_1=20 +lat_2=60 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs")
+
+
+z = cities %>% 
+ filter(!(state_name %in% c( 'Puerto Rico', 'Alaska', 'Hawaii')))
+
+z = z %>%
+  mutate(mex_dist = st_distance(z, mex),
+         mex_dist = units::set_units(mex_dist, "km"),
+         mex_dist = units::drop_units(mex_dist))
+
+(ZdistTable = z %>%
+    slice_max(mex_dist, n = 5) %>%
+    select(city, state_name, mex_dist))
+knitr::kable(ZdistTable,
+             caption = "Five Farthest Cities from Mexican Border ",
+             col.names = c("City", "State", "Distances(km)", "Geometry"))
+
+st_crs(mex)
+  
+#2.4 
+
+canada = rnaturalearth::countries110 %>%
+  st_as_sf() %>% 
+  filter(admin == "Canada") %>% 
+  st_cast("MULTILINESTRING") 
+plot(canada$geometry)
+canada = st_transform(canada, "+proj=eqdc +lat_0=40 +lon_0=-96 +lat_1=20 +lat_2=60 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs")
+
+v = cities %>% 
+ filter(!(state_name %in% c( 'Puerto Rico', 'Alaska', 'Hawaii')))
+
+v = v %>%
+  mutate(can_dist = st_distance(v, canada),
+         can_dist = units::set_units(can_dist, "km"),
+         can_dist = units::drop_units(can_dist))
+(CandistTable = v %>%
+    slice_max(can_dist, n = 5) %>%
+    select(city, state_name, can_dist))
+knitr::kable(CandistTable,
+             caption = "Five Farthest Cities from Canadian Border ",
+             col.names = c("City", "State", "Distances(km)", "Geometry"))
+
+
+```
+
+
+```{r}
+bigcities = cities %>% 
+  arrange(-population) %>% 
+  slice_max(population, n = 10) 
+citfromborder = y %>% 
+  arrange(-state_dist) %>% 
+  slice_max(state_dist, n = 5)
+citfromstate = x %>% 
+  arrange(-distances) %>% 
+  slice_max(distances, n = 5)
+
+
+rwa = y %>% 
+  filter(state_dist<100)
+plot(rwa$geometry)
+  
+
+
+jint = v %>%
+  st_join(z) %>% 
+  mutate(differ = abs(mex_dist- can_dist)) %>% 
+  filter(differ< 100)
+plot(jint)
+
+jintCities = jint %>% 
+  arrange(-differ) %>% 
+  slice_max(differ, n = 5)
+
+
+#3.1
+ggplot() +
+  geom_sf(data = conus_c, lty = 8) +
+  geom_sf(data = mex, size = 1) +
+  geom_sf(data = canada, size = 1) +
+  geom_sf(data = bigcities, col = 'red', size = 2) +
+  geom_sf(data = conus_state, size = 1) +
+  ggrepel::geom_label_repel(
+    data = bigcities,
+    aes(label = city, geometry = geometry),
+    stat = "sf_coordinates",
+    size = 2)
+ 
+#3.2
+ggplot() +
+  geom_sf(data = conus_state) +
+  geom_sf(data = y, aes(col = state_dist), size = .1) +
+  scale_color_gradient(low = "gray", high = "red") +
+  geom_sf(data = citfromborder, col = 'green', size = 2) +
+   ggrepel::geom_label_repel(
+    data = citfromborder,
+    aes(label = city, geometry = geometry),
+    stat = "sf_coordinates",
+    size = 2)
+
+
+ggplot() +
+  geom_sf(data = conus_c) +
+  geom_sf(data = x, aes(col = distances), size = .1) +
+  scale_color_gradient(low = "gray", high = "red") +
+  geom_sf(data = citfromstate, col = 'green', size = 2) +
+   ggrepel::geom_label_repel(
+    data = citfromstate,
+    aes(label = city, geometry = geometry),
+    stat = "sf_coordinates",
+    size = 2)
+  
+ ggplot() +
+  geom_sf(data = conus_c) +
+   geom_sf(data = jint) +
+   ggrepel::geom_label_repel(
+    data = jintCities,
+    aes(label = city.x, geometry = geometry),
+    stat = "sf_coordinates",
+    size = 2)
+ 
+ #4.1
+ #There are 9334 cities within 100 miles of US border. 
+ 
+ 
+  
+
+ 
+ 
+
+
+```
