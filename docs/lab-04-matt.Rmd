@@ -130,7 +130,7 @@ tess_summary = bind_rows(
              format.args = list(big.mark = ",")) 
 ```
 
-```{r}
+```{r,warning = FALSE}
 library(readxl)
 dams = read_excel("../data/NID2019_U.xlsx") %>% 
   filter(!is.na(LATITUDE))
