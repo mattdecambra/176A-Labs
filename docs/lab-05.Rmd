@@ -1,0 +1,103 @@
+```{r}
+library(raster) # Raster Data handling
+library(tidyverse) # Data Manipulation
+library(getlandsat) # keyless Landsat data (2013-2017)
+library(sf) # Vector data processing
+library(mapview) # Rapid Interactive visualization
+library(raster)
+library(osmdata)
+
+bound = readr:: read_csv("../data/uscities.csv") %>% 
+  st_as_sf(coords = c("lng", "lat"), crs = 4326) %>% 
+   filter((city_ascii %in% c( 'Palo'))) %>% 
+  st_transform(5070) %>% 
+  st_buffer(5000) %>% 
+  st_bbox() %>% 
+  st_as_sfc() %>% 
+  st_as_sf()
+
+mapview()
+
+
+bwgs = st_transform(bound, 4326)
+```
+
+
+
+```{r}
+meta = read.csv("../data/palo-flood.csv")
+
+meta$download_url
+
+files = lsat_scene_files(meta$download_url) %>% 
+  filter(grepl(paste0("B", 1:6, ".TIF$", collapse = "|"), file)) %>% 
+  arrange(file) %>% 
+  pull(file)
+
+st = sapply(files, lsat_image)
+
+s = stack(st) %>%   #Dimensions are 7811, 7681, 59996291, 6  (nrow, ncol, ncell, nlayers), Resolution is 30, 30... CRS is +proj=utm +zone=15 +datum=WGS84 +units=m +no_defs 
+  setNames(c(paste0("band", 1:6)))
+
+cropper = bwgs %>% st_transform(crs(s))
+
+r = crop(s, cropper)
+
+
+```
+```{r}
+
+par(mfrow = c(2,2))
+plotRGB(r, r = 4, g=3, b=2, stretch = "lin")
+plotRGB(r, r = 5, g=4, b=3, stretch = "lin")
+plotRGB(r, r = 5, g=6, b=4, stretch = "lin")
+plotRGB(r, r = 8, g=5, b=3, stretch = "lin") # Applying a color stretch allows us to see the color difference better. Makes color scale relative to itself
+dev.off()
+
+ndvi = (r$band5- r$band4) / (r$band5 + r$band4)
+ndwi = (r$band3 - r$band5) / (r$band3 + r$band5)
+mndwi = (r$band3 - r$band6) / (r$band3 + r$band6)
+wri = (r$band3 - r$band4) / (r$band3 + r$band6)
+simp = (1) / sqrt(r$band2 - r$band6)
+
+pal = (colorRampPalette(c( "red","white","green"))(256))
+plot(ndvi, col = pal)
+
+thresholding = function(x){ifelse(x <= 0, 1, NA)}
+plot(ndvi)
+thresholding(100)
+thresholding(-100)
+
+flood = calc(ndvi, thresholding)
+plot(flood, col = "blue")
+
+
+floodstack = stack(ndvi, ndwi, mndwi, wri, simp) %>% 
+  setNames(c("ndvi", "ndwi", "mndwi", "wri", "simp"))
+
+plot(floodstack) #Dimension are 340, 346, 117640, 5  (nrow, ncol, ncell, nlayers)
+mapview()     # CRS is +proj=utm +zone=15 +datum=WGS84 +units=m +no_defs 
+                  # cell resoltuion is  30, 30  (x, y)
+```
+```{r}
+set.seed(09032020)
+
+values = getValues(r)
+dim(values) #Tells us that there are 6 bands with 59996291 individual pixels. 
+
+k2 <-kmeans(values, centers = 12)
+
+
+kmeans_rasters = floodstack$ndvi
+values(kmeans_rasters) = k2$cluster
+
+kmeansval = getValues(kmeans_rasters)
+
+floodval = getValues(flood)
+bintable = table(floodval, kmeansval)
+maxras = which.max(bintable)
+
+final = combine(maxras, kmeansval)
+
+
+```
