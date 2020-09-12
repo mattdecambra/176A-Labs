@@ -7,7 +7,9 @@ output:
     theme: journal
 ---
 
-```{r}
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, out.width = "75%", fig.align = 'center')
+
 library(tidyverse)
 library(sf)
 library(units)

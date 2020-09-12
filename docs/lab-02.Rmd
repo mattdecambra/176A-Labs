@@ -8,13 +8,15 @@ output:
 editor_options: 
   chunk_output_type: console
 ---
-
-```{r}
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, out.width = "75%", fig.align = 'center')
 library(tidyverse)
 library(knitr)
 library(readxl)
 library(zoo)
 installed.packages("readxl")
+echo = FALSE
+message = FALSE
 
 covid = read_csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv')
 ```
@@ -102,4 +104,3 @@ covid %>%
     facet_wrap(~state, scale = "free_y")
 
 ```
-#Question
