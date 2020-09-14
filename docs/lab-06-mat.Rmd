@@ -1,3 +1,13 @@
+---
+title: "Geography 176A"
+author: "[Matt DeCambra](https://mattdecambra.github.io)"
+subtitle: 'Lab 06: Flood Risk in Mission Creek: Past, Present, Future'
+output:
+  html_document:
+    theme: journal
+---
+
+
 ```{r,warning=FALSE}
 
 library(sf)        # vector manipulation
