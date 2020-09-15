@@ -24,7 +24,8 @@ bwgs = st_transform(bound, 4326)
 
 
 
-```{r}
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, out.width = "75%", fig.align = 'center')
 meta = read.csv("../data/palo-flood.csv")
 
 meta$download_url
