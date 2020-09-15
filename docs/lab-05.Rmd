@@ -1,4 +1,17 @@
-```{r}
+---
+title: "Geography 176A"
+author: "[Matt DeCambra](https://mattdecambra.github.io)"
+subtitle: 'Lab 05: Raster Analysis'
+output:
+  html_document:
+    theme: journal
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, out.width = "75%", fig.align = 'center')
+
 library(raster) # Raster Data handling
 library(tidyverse) # Data Manipulation
 library(getlandsat) # keyless Landsat data (2013-2017)
@@ -6,6 +19,7 @@ library(sf) # Vector data processing
 library(mapview) # Rapid Interactive visualization
 library(raster)
 library(osmdata)
+
 
 bound = readr:: read_csv("../data/uscities.csv") %>% 
   st_as_sf(coords = c("lng", "lat"), crs = 4326) %>% 
@@ -20,12 +34,7 @@ mapview()
 
 
 bwgs = st_transform(bound, 4326)
-```
 
-
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(warning = FALSE, message = FALSE, out.width = "75%", fig.align = 'center')
 meta = read.csv("../data/palo-flood.csv")
 
 meta$download_url
